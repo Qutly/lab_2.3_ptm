@@ -35,6 +35,8 @@ void setup() {
 
 void loop() {
   unsigned long currentValue = millis(); 
+  float potentiometerVoltage = measureVoltage(A0);
+  float photoresistorVoltage = measureVoltage(A3);
 
   if (currentValue - lastValue1 >= 500) {
     lastValue1 = currentValue;
@@ -52,16 +54,16 @@ void loop() {
    
   lcd.setCursor(0,0);
   lcd.print("Potencjometr: ");
-  lcd.print(measureVoltage(A0), 1);
+  lcd.print(potentiometerVoltage, 1);
   lcd.print("V");
   lcd.setCursor(0,1);
   lcd.print("Fotorezystor: ");
-  lcd.print(measureVoltage(A3), 1);
+  lcd.print(photoresistorVoltage, 1);
   lcd.print("V");
   lcd.setCursor(0,2);
   lcd.print("Regulator: ");
-  lcd.print(regulator(measureVoltage(A0), measureVoltage(A3)), 1);
+  lcd.print(regulator(potentiometerVoltage, photoresistorVoltage), 1);
   lcd.setCursor(0,3);
   lcd.print("Z histereza: ");
-  lcd.print(regulatorWithHisteresis(measureVoltage(A0), measureVoltage(A3)), 1);
+  lcd.print(regulatorWithHisteresis(potentiometerVoltage, photoresistorVoltage), 1);
 }
