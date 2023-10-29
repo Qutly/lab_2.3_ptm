@@ -1,0 +1,67 @@
+#include <avr/io.h>
+#include <stdlib.h>
+#include <string.h>
+#include <util/delay.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+unsigned long lastValue1 = 0; 
+unsigned long lastValue2 = 0;
+
+float measureVoltage(byte Pin) {
+  int analogValue = analogRead(Pin);
+  float voltage = analogValue / 1023. * 5;
+  return voltage;
+} 
+
+float regulator(float photoresistorValue, float potentiometerValue) {
+  return photoresistorValue + potentiometerValue;
+}
+
+float regulatorWithHisteresis(float photoresistorValue, float potentiometerValue) {
+  return photoresistorValue + potentiometerValue;
+}
+
+void setup() {
+  pinMode(PD1, OUTPUT);
+  pinMode(PD2, OUTPUT);
+  pinMode(A0, INPUT);
+  pinMode(A3, INPUT);
+  lcd.clear();
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  unsigned long currentValue = millis(); 
+
+  if (currentValue - lastValue1 >= 500) {
+    lastValue1 = currentValue;
+    digitalWrite(1, !digitalRead(1));
+    delay(200); 
+    digitalWrite(1, !digitalRead(1)); 
+  }
+
+  if (currentValue - lastValue2 >= 2000) {
+    lastValue2 = currentValue;
+    digitalWrite(2, !digitalRead(2)); 
+    delay(200); 
+    digitalWrite(2, !digitalRead(2)); 
+  }
+   
+  lcd.setCursor(0,0);
+  lcd.print("Potencjometr: ");
+  lcd.print(measureVoltage(A0), 1);
+  lcd.print("V");
+  lcd.setCursor(0,1);
+  lcd.print("Fotorezystor: ");
+  lcd.print(measureVoltage(A3), 1);
+  lcd.print("V");
+  lcd.setCursor(0,2);
+  lcd.print("Regulator: ");
+  lcd.print(regulator(measureVoltage(A0), measureVoltage(A3)), 1);
+  lcd.setCursor(0,3);
+  lcd.print("Z histereza: ");
+  lcd.print(regulatorWithHisteresis(measureVoltage(A0), measureVoltage(A3)), 1);
+}
