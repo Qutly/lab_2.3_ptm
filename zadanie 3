@@ -1,0 +1,72 @@
+#include <avr/io.h>
+#include <stdlib.h>
+#include <string.h>
+#include <util/delay.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+unsigned long lastValue1 = 0; 
+unsigned long lastValue2 = 0;
+unsigned long lastValue3 = 0;
+
+byte rgbPins[3] = {PD3, PD5, PD6};
+int redTab[6]={255, 255, 255, 0, 0, 80};
+int greenTab[6]={0, 50, 255, 255, 0, 0};
+int blueTab[6]={0, 0, 0, 0, 255, 80};
+
+int j=0;
+int k=0; 
+int l=0;
+
+void setup() {
+  pinMode(PD1, OUTPUT);
+  pinMode(PD2, OUTPUT);
+
+  for(int i=0; i<3; i++)
+    pinMode(rgbPins[i], OUTPUT);
+
+  lcd.clear();
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  unsigned long currentValue = millis(); 
+
+  if (currentValue - lastValue1 >= 500) {
+    lastValue1 = currentValue;
+    digitalWrite(1, !digitalRead(1));
+    delay(200); 
+    digitalWrite(1, !digitalRead(1)); 
+  }
+
+  if (currentValue - lastValue2 >= 2000) {
+    lastValue2 = currentValue;
+    digitalWrite(2, !digitalRead(2)); 
+    delay(200); 
+    digitalWrite(2, !digitalRead(2)); 
+  }
+ 
+  if (currentValue - lastValue3 >= 1000) {
+    lastValue3 = currentValue;
+    analogWrite(rgbPins[0], redTab[j]);
+    analogWrite(rgbPins[1], greenTab[k]);
+    analogWrite(rgbPins[2], blueTab[l]);
+    lcd.setCursor(0,0);
+    lcd.print("Led-R: ");
+    lcd.print(redTab[j]);
+    lcd.setCursor(0,1);
+    lcd.print("Led-G: ");
+    lcd.print(greenTab[k]);
+    lcd.setCursor(0,2);
+    lcd.print("Led-B: ");
+    lcd.print(blueTab[l]);
+    j++;
+    k++;
+    l++;
+    if(j==5 && k==5 && l==5) {
+      j=0; k=0; l=0;
+    }
+  }
+}
