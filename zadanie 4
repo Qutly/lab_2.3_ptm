@@ -1,0 +1,92 @@
+#include <avr/io.h>
+#include <stdlib.h>
+#include <string.h>
+#include <util/delay.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+unsigned long lastValue1 = 0; 
+unsigned long lastValue2 = 0;
+
+byte rgbPins[3] = {PD3, PD5, PD6};
+
+float measureVoltage(byte Pin) {
+  int analogValue = analogRead(Pin);
+  float voltage = analogValue / 1023. * 5;
+  return voltage;
+} 
+
+void setup() {
+  for(int i=0; i<3; i++)
+    pinMode(rgbPins[i], OUTPUT);
+
+  pinMode(PD1, OUTPUT);
+  pinMode(PD2, OUTPUT);
+  pinMode(A0, INPUT);
+  lcd.clear();
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  unsigned long currentValue = millis();
+  float voltage = measureVoltage(A0);
+  float temperature = voltage*20;
+
+  if (currentValue - lastValue1 >= 500) {
+    lastValue1 = currentValue;
+    digitalWrite(1, !digitalRead(1));
+    delay(200); 
+    digitalWrite(1, !digitalRead(1)); 
+  }
+
+  if (currentValue - lastValue2 >= 2000) {
+    lastValue2 = currentValue;
+    digitalWrite(2, !digitalRead(2)); 
+    delay(200); 
+    digitalWrite(2, !digitalRead(2)); 
+  }
+
+  lcd.setCursor(0,0);
+  lcd.print("Napiecie: ");
+  lcd.print(voltage);
+  lcd.print("V");
+  lcd.setCursor(0,1);
+  lcd.print("Temperatura:");
+  lcd.print(temperature);
+  lcd.print("*C");
+
+  lcd.setCursor(0,2);
+  if(temperature <= 20) {
+    lcd.print("Zimna");
+  } else if(temperature > 20 && temperature <= 40) {
+    lcd.print("Ciepla");
+  } else if(temperature > 40 && temperature <= 99) {
+    lcd.print("Goraca");
+  } else if(temperature > 99) {
+    lcd.print("Wrzatek");
+  }
+
+  if(temperature <= 70) {
+    digitalWrite(rgbPins[0], 0);
+    digitalWrite(rgbPins[1], 255);
+    digitalWrite(rgbPins[2], 0);
+  } else if(temperature > 70 && temperature <= 80) {
+    digitalWrite(rgbPins[0], 0);
+    digitalWrite(rgbPins[1], 0);
+    digitalWrite(rgbPins[2], 255);
+  } else if(temperature > 80 && temperature <= 90) {
+    digitalWrite(rgbPins[0], 128);
+    digitalWrite(rgbPins[1], 0);
+    digitalWrite(rgbPins[2], 128);
+  } else if(temperature > 90 && temperature <= 99) {
+   digitalWrite(rgbPins[0], 255);
+   digitalWrite(rgbPins[1], 255);
+   digitalWrite(rgbPins[2], 0);
+  } else if(temperature > 99) {
+   digitalWrite(rgbPins[0], 255);
+   digitalWrite(rgbPins[1], 0);
+   digitalWrite(rgbPins[2], 0);
+  }
+}
