@@ -1,0 +1,208 @@
+#include <avr/io.h>
+#include <stdlib.h>
+#include <string.h>
+#include <util/delay.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+unsigned long lastValue1 = 0; 
+unsigned long lastValue2 = 0;
+unsigned long lastValue3 = 0;
+
+byte rgbPins[3] = {PD3, PD5, PD6};
+
+int redTab[6]={255, 255, 255, 0, 0, 80};
+int greenTab[6]={0, 50, 255, 255, 0, 0};
+int blueTab[6]={0, 0, 0, 0, 255, 80};
+
+int j=0, k=0, l=0;
+int option=1;
+bool confirmed=false;
+int lastClk = HIGH;
+
+float measureVoltage(byte Pin) {
+  int analogValue = analogRead(Pin);
+  float voltage = analogValue / 1023. * 5;
+  return voltage;
+} 
+
+float regulator(float photoresistorValue, float potentiometerValue) {
+  return photoresistorValue + potentiometerValue;
+}
+
+float regulatorWithHisteresis(float photoresistorValue, float potentiometerValue) {
+  return photoresistorValue + potentiometerValue;
+}
+
+void setMenu() {
+  lcd.setCursor(0,0);
+  lcd.print("Wybierz program:");
+  lcd.setCursor(0,1);
+  lcd.print(option);
+}
+
+void firstProgram(float potentiometerVoltage, float photoresistorVoltage) {
+  lcd.setCursor(0,0);
+  lcd.print("Potencjometr: ");
+  lcd.print(potentiometerVoltage, 1);
+  lcd.print("V");
+  lcd.setCursor(0,1);
+  lcd.print("Fotorezystor: ");
+  lcd.print(photoresistorVoltage, 1);
+  lcd.print("V");
+  lcd.setCursor(0,2);
+  lcd.print("Regulator: ");
+  lcd.print(regulator(potentiometerVoltage, photoresistorVoltage), 1);
+  lcd.setCursor(0,3);
+  lcd.print("Z histereza: ");
+  lcd.print(regulatorWithHisteresis(potentiometerVoltage, photoresistorVoltage), 1);
+}
+
+void secondProgram(unsigned long currentValue) {
+  if (currentValue - lastValue3 >= 1000) {
+    lastValue3 = currentValue;
+    analogWrite(rgbPins[0], redTab[j]);
+    analogWrite(rgbPins[1], greenTab[k]);
+    analogWrite(rgbPins[2], blueTab[l]);
+    lcd.setCursor(0,0);
+    lcd.print("Led-R: ");
+    lcd.print(redTab[j]);
+    lcd.setCursor(0,1);
+    lcd.print("Led-G: ");
+    lcd.print(greenTab[k]);
+    lcd.setCursor(0,2);
+    lcd.print("Led-B: ");
+    lcd.print(blueTab[l]);
+    j++;
+    k++;
+    l++;
+    if(j==5 && k==5 && l==5) {
+      j=0; k=0; l=0;
+    }
+  }
+}
+
+void thirdProgram(float potentiometerVoltage, float temperature) {
+  lcd.setCursor(0,0);
+  lcd.print("Napiecie: ");
+  lcd.print(potentiometerVoltage);
+  lcd.print("V");
+  lcd.setCursor(0,1);
+  lcd.print("Temperatura:");
+  lcd.print(temperature);
+  lcd.print("*C");
+
+  lcd.setCursor(0,2);
+  if(temperature <= 20) {
+    lcd.print("Zimna");
+  } else if(temperature > 20 && temperature <= 40) {
+    lcd.print("Ciepla");
+  } else if(temperature > 40 && temperature <= 99) {
+    lcd.print("Goraca");
+  } else if(temperature > 99) {
+    lcd.print("Wrzatek");
+  }
+
+  if(temperature <= 70) {
+    digitalWrite(rgbPins[0], 0);
+    digitalWrite(rgbPins[1], 255);
+    digitalWrite(rgbPins[2], 0);
+  } else if(temperature > 70 && temperature <= 80) {
+    digitalWrite(rgbPins[0], 0);
+    digitalWrite(rgbPins[1], 0);
+    digitalWrite(rgbPins[2], 255);
+  } else if(temperature > 80 && temperature <= 90) {
+    digitalWrite(rgbPins[0], 128);
+    digitalWrite(rgbPins[1], 0);
+    digitalWrite(rgbPins[2], 128);
+  } else if(temperature > 90 && temperature <= 99) {
+   digitalWrite(rgbPins[0], 255);
+   digitalWrite(rgbPins[1], 255);
+   digitalWrite(rgbPins[2], 0);
+  } else if(temperature > 99) {
+   digitalWrite(rgbPins[0], 255);
+   digitalWrite(rgbPins[1], 0);
+   digitalWrite(rgbPins[2], 0);
+  }
+}
+
+void setup() {
+  
+  for(int i=0; i<3; i++)
+    pinMode(rgbPins[i], OUTPUT);
+
+  pinMode(PD1, OUTPUT);
+  pinMode(PD2, OUTPUT);
+  pinMode(A0, INPUT);
+  pinMode(A1, INPUT);
+  pinMode(A2, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(PD4, INPUT_PULLUP);
+  lcd.clear();
+  lcd.init();
+  lcd.backlight();
+  setMenu();
+}
+
+void loop() {
+
+  unsigned long currentValue = millis();
+  float potentiometerVoltage = measureVoltage(A0);
+  float photoresistorVoltage = measureVoltage(A1);
+  float temperature = potentiometerVoltage*20;
+  int newClk = digitalRead(A2);
+
+  if (digitalRead(PD4) == LOW && confirmed == false) {
+    lcd.clear();
+    confirmed=true;
+  } else if(digitalRead(PD4) == LOW && confirmed == true) {
+    lcd.clear();
+    confirmed=false;
+    setMenu();
+  }
+
+  if (newClk != lastClk) {
+    lastClk = newClk;
+    int dtValue = digitalRead(A3);
+    if (newClk == LOW && dtValue == HIGH) {
+      option++;
+      if(option>3) option=3;
+      lcd.setCursor(0,1);
+      lcd.print(option);
+    }
+    if (newClk == LOW && dtValue == LOW) {
+      option--;
+      if(option<1) option=1;
+      lcd.setCursor(0,1);
+      lcd.print(option);
+    }
+  }
+
+  if (currentValue - lastValue1 >= 500) {
+    lastValue1 = currentValue;
+    digitalWrite(1, !digitalRead(1));
+    delay(200); 
+    digitalWrite(1, !digitalRead(1)); 
+  }
+
+  if (currentValue - lastValue2 >= 2000) {
+    lastValue2 = currentValue;
+    digitalWrite(2, !digitalRead(2)); 
+    delay(200); 
+    digitalWrite(2, !digitalRead(2)); 
+  }
+  if(confirmed) {
+    switch (option) {
+      case 1:
+        firstProgram(potentiometerVoltage, photoresistorVoltage);
+        break;
+      case 2:
+        secondProgram(currentValue);
+        break;
+      case 3:
+        thirdProgram(potentiometerVoltage, temperature);
+        break;   
+    }
+  }
+}
