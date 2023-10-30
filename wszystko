@@ -11,15 +11,14 @@ unsigned long lastValue2 = 0;
 unsigned long lastValue3 = 0;
 
 byte rgbPins[3] = {PD3, PD5, PD6};
+byte inputPins[4] = {A0, A1, A2, A3};
 
 int redTab[6]={255, 255, 255, 0, 0, 80};
 int greenTab[6]={0, 50, 255, 255, 0, 0};
 int blueTab[6]={0, 0, 0, 0, 255, 80};
 
-int j=0, k=0, l=0;
-int option=1;
+int j=0, k=0, l=0, option=1, lastClk=HIGH, buttonState=LOW, lastButtonState=LOW, buttonPressCount=0;
 bool confirmed=false;
-int lastClk = HIGH;
 
 float measureVoltage(byte Pin) {
   int analogValue = analogRead(Pin);
@@ -61,6 +60,7 @@ void firstProgram(float potentiometerVoltage, float photoresistorVoltage) {
 
 void secondProgram(unsigned long currentValue) {
   if (currentValue - lastValue3 >= 1000) {
+    lcd.clear();
     lastValue3 = currentValue;
     analogWrite(rgbPins[0], redTab[j]);
     analogWrite(rgbPins[1], greenTab[k]);
@@ -93,14 +93,35 @@ void thirdProgram(float potentiometerVoltage, float temperature) {
   lcd.print(temperature);
   lcd.print("*C");
 
-  lcd.setCursor(0,2);
+  if(temperature <= 10) {
+    lcd.setCursor(19,1);
+    lcd.print(" ");
+    lcd.setCursor(18,1);
+    lcd.print(" ");
+  } else if(temperature > 10 && temperature < 100) {
+    lcd.setCursor(19,1);
+    lcd.print(" ");
+  }
+  
   if(temperature <= 20) {
+    lcd.setCursor(5,2);
+    lcd.print(" ");
+    lcd.setCursor(6,2);
+    lcd.print(" ");
+    lcd.setCursor(0,2);
     lcd.print("Zimna");
   } else if(temperature > 20 && temperature <= 40) {
+    lcd.setCursor(6,2);
+    lcd.print(" ");
+    lcd.setCursor(0,2);
     lcd.print("Ciepla");
   } else if(temperature > 40 && temperature <= 99) {
+    lcd.setCursor(6,2);
+    lcd.print(" ");
+    lcd.setCursor(0,2);
     lcd.print("Goraca");
   } else if(temperature > 99) {
+    lcd.setCursor(0,2);
     lcd.print("Wrzatek");
   }
 
@@ -131,13 +152,12 @@ void setup() {
   
   for(int i=0; i<3; i++)
     pinMode(rgbPins[i], OUTPUT);
-
+  
+  for(int i=0; i<4; i++)
+    pinMode(inputPins[i], INPUT);
+  
   pinMode(PD1, OUTPUT);
   pinMode(PD2, OUTPUT);
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
   pinMode(PD4, INPUT_PULLUP);
   lcd.clear();
   lcd.init();
@@ -152,17 +172,27 @@ void loop() {
   float photoresistorVoltage = measureVoltage(A1);
   float temperature = potentiometerVoltage*20;
   int newClk = digitalRead(A2);
-
-  if (digitalRead(PD4) == LOW && confirmed == false) {
-    lcd.clear();
-    confirmed=true;
-  } else if(digitalRead(PD4) == LOW && confirmed == true) {
-    lcd.clear();
-    confirmed=false;
-    setMenu();
+  buttonState = digitalRead(PD4);
+  
+  if (buttonState != lastButtonState) {
+    if (buttonState == LOW) {
+      buttonPressCount++;
+      if (buttonPressCount % 2 == 1) {
+        lcd.clear();
+        confirmed = true;
+      } else {
+        lcd.clear();
+        confirmed = false;
+        digitalWrite(rgbPins[0], 0);
+        digitalWrite(rgbPins[1], 0);
+        digitalWrite(rgbPins[2], 0);
+        setMenu();
+      }
+    }
   }
+  lastButtonState = buttonState;
 
-  if (newClk != lastClk) {
+  if (newClk != lastClk && !confirmed) {
     lastClk = newClk;
     int dtValue = digitalRead(A3);
     if (newClk == LOW && dtValue == HIGH) {
